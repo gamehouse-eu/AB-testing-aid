@@ -40,12 +40,11 @@ def minimumDetectableEffect(sample):
     m = sample.mean()
     s = stdev(sample)
     x = m - es*s
-    mde = round(abs((x-m)/m),4)
-    print('mean',m)
+    mde = round(abs((x-m)/m),3)
+    print('mean',round(m,3))
     print('minimum detectable effect', mde)
-    print('+/-', mde*m)
+    print('+/-', round(mde*m,3))
     return abs((x-m)/m)
-
 
 
 def AAtests(sample, no_tests = 1000):
@@ -76,31 +75,31 @@ def AAtests(sample, no_tests = 1000):
     """
 
     dfPv = []
-    dfM = []
+    dfT = []
     for i in range(0,no_tests):
         train,test = train_test_split(sample,test_size = 0.5)
-        dfPv.append(ttest_ind(train,test).pvalue)
-        dfM.append(train.mean())
-        dfM.append(test.mean())
+        statistic,pvalue = ttest_ind(train,test)
+        dfPv.append(pvalue)
+        dfT.append(statistic)
+
     dfPv = pd.DataFrame(dfPv)
     dfPv.columns = ['p-values']
     print('Percentage of times the p-values was <=5%:',(dfPv['p-values']<=0.05).mean())
     
     f_obs = (dfPv<=0.05).value_counts()
-    chiRes = chisquare(f_obs, f_exp=[0.95*no_tests,0.05*no_tests], ddof=0, axis=0)
+    chiRes = stats.chisquare(f_obs, f_exp=[0.95*no_tests,0.05*no_tests], ddof=0, axis=0)
     print('Chi-squared test on the 0.5 tail (should be high enough):',chiRes.pvalue)
     
     dfPv.hist()
+    
     print('P-value of uniformity assumption (should be  high):',kstest(dfPv['p-values'], uniform.cdf).pvalue)
+
+    dfT = pd.DataFrame(dfT)
+    dfT.columns = ['T-statistic values distribution']
     
-    dfM = pd.DataFrame(dfM)
-    dfM.columns = ['mean values distribution']
-    
-    ((dfM-dfM.mean())/dfM.std()).hist(density=1, bins= 20 if no_tests <=1000 else 60)
+    dfT.hist(density=1, bins= 15 if no_tests <=1000 else 30)
     x = np.linspace(0 - 4,  4, 100)
     plt.plot(x, stats.norm.pdf(x, 0, 1), color='red')
     plt.show()
 
-    return dfPv, dfM
-
-
+    return dfPv, dfT
